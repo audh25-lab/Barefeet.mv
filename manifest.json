@@ -1,0 +1,16 @@
+{
+  "name": "BarefeetMV 👣",
+  "short_name": "BarefeetMV",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#001018",
+  "theme_color": "#00e5ff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABU1PscAAAACXBIWXMAAAsSAAALEgHS3X78AAAA",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
