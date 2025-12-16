@@ -1,1 +1,253 @@
-<!DOCTYPE html><html><head><title>BarefeetMV 👣 Mobile</title><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQmFyZWZlZXRNViBNb2JpbGUg8KCIiLCJzaG9ydF9uYW1lIjoiQkZNVk0g8KCIiLCJzdGFydF91cmwiOiIuIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBTUFBUUFDQUFZQUFBQURBUFBNaExBQUFBQVhOU1IwSUFyczRjNlFBQUFBUm5RVTFCQUN4and2OFlRVUFBQUFKY0VoWmN3QUFEc01BQUE3REFjZHZxR1FBQUFCU1VSQlZIZGU3Y0V4QVFBQUFNS2c5VTl0Q0Yrd0FBQUFBQUFBQUFBQUFBQUFDQS8vLy8vLy8vLy93QUFBQUFCSlJVNUVya0pnZ2dBPSI8KCIiLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsInRoZW1lX2NvbG9yIjoiI2ZmZiIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmIiwib3JpZW50YXRpb24iOiJhbnkifQ=="><style>body{margin:0;overflow:hidden;}canvas{display:block;touch-action:none;}</style><script>if('serviceWorker'in navigator)navigator.serviceWorker.register(new URL('',import.meta.url),{scope:'/'});</script></head><body><canvas id="c"></canvas><script>const c=document.getElementById("c"),ctx=c.getContext("2d"),ac=new AudioContext();let w,h,world={size:4,center:{x:0,y:0},tiles:[],score:0,realm:1,imprints:[],particles:[],undo:[],slow:0,high:localStorage.getItem("high")||0},pointers={},prevDist=0,prevPos={},isPinch=false,beta=0,gamma=0,vib=navigator.vibrate||navigator.webkitVibrate||navigator.mozVibrate;class Tile{constructor(x,y,v){this.x=x;this.y=y;this.v=v;this.vx=0;this.vy=0}}function rand(a,b){return Math.random()*(b-a)+a}function dist(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1)}function canMerge(v1,v2){return v1===1&&v2===1||v1===2&&v2===1||v2===2&&v1===1||v1===v2&&v1>=3}function mergeVal(v1,v2){return v1===1&&v2===1?2:v1>=3&&v1===v2?v1*2:3}function addTile(){let x=rand(-world.size/2,world.size/2),y=rand(-world.size/2,world.size/2),v=Math.random()<.5?1:2;world.tiles.push(new Tile(x,y,v))}function playSound(f,d){let o=ac.createOscillator(),g=ac.createGain();o.type="sine";o.frequency.value=f;g.gain.value=0.5;o.connect(g);g.connect(ac.destination);o.start();setTimeout(()=>{o.stop()},d)}function vibHap(d){if(vib)vib(d)}function pushUndo(){if(world.undo.length>2)world.undo.shift();world.undo.push(JSON.parse(JSON.stringify(world.tiles)))}function undo(){if(world.undo.length){world.tiles=world.undo.pop()}}function applyForce(toward,s){let cx=world.center.x,cy=world.center.y;for(let t of world.tiles){let dx=cx-t.x,dy=cy-t.y,d=Math.hypot(dx,dy)+.001,fx=dx/d*s,fy=dy/d*s;if(!toward){fx=-fx;fy=-fy}t.vx+=fx;t.vy+=fy}playSound(toward?200:400,200);vibHap(50)}function handleOrient(e){beta=e.beta/90;gamma=e.gamma/90;let s=Math.abs(beta+gamma)/2,toward=beta+gamma>0;applyForce(toward,s);pushUndo()}function update(){if(world.slow>0){world.slow--;return}for(let t of world.tiles){t.x+=t.vx;t.y+=t.vy;t.vx*=0.9;t.vy*=0.9}if(world.realm>2) for(let t of world.tiles) t.vy-=.01;let merges=0,toMerge=[];for(let i=0;i<world.tiles.length;i++)for(let j=i+1;j<world.tiles.length;j++){let t1=world.tiles[i],t2=world.tiles[j];if(dist(t1.x,t1.y,t2.x,t2.y)<.5&&canMerge(t1.v,t2.v)) toMerge.push([i,j])}let merged=new Set;for(let[i,j]of toMerge){if(merged.has(i)||merged.has(j))continue;let t1=world.tiles[i],t2=world.tiles[j],nv=mergeVal(t1.v,t2.v),nx=(t1.x+t2.x)/2,ny=(t1.y+t2.y)/2,nt=new Tile(nx,ny,nv);for(let o of world.tiles)if(o!==t1&&o!==t2){let dx=o.x-nx,dy=o.y-ny,d=Math.hypot(dx,dy)+.001;o.vx+=dx/d*.5;o.vy+=dy/d*.5}for(let k=0;k<10;k++){let a=rand(0,Math.PI*2),vx=Math.cos(a)*.2,vy=Math.sin(a)*.2;world.particles.push({x:nx,y:ny,vx,vy,life:30,color:`hsl(${Math.log2(nv)*30%360},80%,60%)`})}world.imprints.push({x:nx,y:ny,a:1});world.tiles.push(nt);world.score+=nv;if(nv>=24&&world.realm<nv/24+1)world.realm=Math.floor(nv/24)+1;merges++;playSound(400+nv*10,100);vibHap(100);merged.add(i);merged.add(j)}world.tiles=world.tiles.filter((_,idx)=>!merged.has(idx));if(merges>1)world.slow=merges*10;if(Math.random()<.2)addTile();let maxD=0;for(let t of world.tiles)maxD=Math.max(maxD,Math.max(Math.abs(t.x),Math.abs(t.y)));if(maxD>world.size/2){world.size*=1.5;world.realm++}for(let i of world.imprints)i.a-=.01;world.imprints=world.imprints.filter(i=>i.a>0);for(let p of world.particles){p.x+=p.vx;p.y+=p.vy;p.life--}world.particles=world.particles.filter(p=>p.life>0);if(world.score>world.high){world.high=world.score;localStorage.setItem("high",world.high)}}function draw(){ctx.clearRect(0,0,w,h);let scale=Math.min(w,h)/world.size*0.8,cx=w/2,cy=h/2;ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);ctx.font="0.2px serif";ctx.textAlign="center";ctx.textBaseline="middle";for(let i of world.imprints){ctx.globalAlpha=i.a;ctx.fillText("👣",i.x,i.y);ctx.globalAlpha=1}for(let p of world.particles){ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,0.05,0,Math.PI*2);ctx.fill()}for(let t of world.tiles){let hue=t.v===1?40:t.v===2?20:Math.log2(t.v)*30%360;ctx.fillStyle=`hsl(${hue},80%,60%)`;ctx.beginPath();ctx.arc(t.x,t.y,0.25,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.fillText(t.v,t.x,t.y)}ctx.restore();ctx.fillStyle="#000";ctx.font="20px serif";ctx.fillText(`Score: ${world.score} Realm: ${world.realm} High: ${world.high}`,w/2,20)}function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;world.size=Math.max(4,Math.min(w,h)/100)}window.addEventListener("resize",resize);resize();addTile();addTile();if(window.DeviceOrientationEvent)window.addEventListener("deviceorientation",handleOrient);c.addEventListener("pointerdown",e=>{pointers[e.pointerId]={x:e.clientX,y:e.clientY};prevPos={...pointers};prevDist=0;if(Object.keys(pointers).length===2)isPinch=true;else isPinch=false;if(Object.keys(pointers).length===1){let cx=w/2,cy=h/2;prevDist=dist(cx,cy,e.clientX,e.clientY)}});c.addEventListener("pointermove",e=>{if(!(e.pointerId in pointers))return;pointers[e.pointerId]={x:e.clientX,y:e.clientY};let pts=Object.values(pointers),s=0,toward=true;if(pts.length===2){let d=dist(pts[0].x,pts[0].y,pts[1].x,pts[1].y);if(prevDist){let dd=d-prevDist;toward=dd<0;s=Math.abs(dd)/10}}else if(pts.length===1){let cx=w/2,cy=h/2,d=dist(cx,cy,pts[0].x,pts[0].y);if(prevDist){let dd=d-prevDist;toward=dd<0;s=Math.abs(dd)/10}}if(s>0){applyForce(toward,s);pushUndo()}prevDist=d||dist(w/2,h/2,pts[0].x,pts[0].y)});c.addEventListener("pointerup",e=>{delete pointers[e.pointerId]});c.addEventListener("dblclick",undo);c.addEventListener("keydown",e=>{if(e.key==="u")undo()});function loop(){update();draw();requestAnimationFrame(loop)}loop();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BarefeetMV 👣</title>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#00e5ff" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABU1PscAAAACXBIWXMAAAsSAAALEgHS3X78AAAA" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    }
+    canvas {
+      display: block;
+    }
+    #install {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      padding: 10px 14px;
+      background: #00e5ff;
+      color: #000;
+      border-radius: 20px;
+      font-size: 14px;
+      display: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="c"></canvas>
+  <button id="install">Install 👣</button>
+
+<script>
+/* =========================
+   SERVICE WORKER
+========================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+
+/* =========================
+   INSTALL PROMPT
+========================= */
+let deferredPrompt;
+const installBtn = document.getElementById("install");
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.style.display = "block";
+});
+
+installBtn.onclick = () => {
+  deferredPrompt?.prompt();
+};
+
+/* =========================
+   CANVAS + AUDIO
+========================= */
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const ac = new (window.AudioContext || window.webkitAudioContext)();
+
+/* unlock audio on first touch */
+document.addEventListener("pointerdown", () => {
+  if (ac.state !== "running") ac.resume();
+}, { once: true });
+
+/* =========================
+   WORLD STATE
+========================= */
+let w, h;
+const world = {
+  size: 4,
+  tiles: [],
+  particles: [],
+  imprints: [],
+  undo: [],
+  score: 0,
+  realm: 1,
+  slow: 0,
+  high: Number(localStorage.getItem("high") || 0)
+};
+
+class Tile {
+  constructor(x, y, v) {
+    this.x = x;
+    this.y = y;
+    this.v = v;
+    this.vx = 0;
+    this.vy = 0;
+  }
+}
+
+const rand = (a,b)=>Math.random()*(b-a)+a;
+const dist = (x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
+
+function canMerge(a,b){
+  return (a===1&&b===1) || ((a===2&&b===1)||(a===1&&b===2)) || (a>=3 && a===b);
+}
+function mergeVal(a,b){
+  if(a===1&&b===1) return 2;
+  if(a>=3&&a===b) return a*2;
+  return 3;
+}
+
+function addTile(){
+  world.tiles.push(
+    new Tile(
+      rand(-world.size/2, world.size/2),
+      rand(-world.size/2, world.size/2),
+      Math.random()<0.5?1:2
+    )
+  );
+}
+
+function playSound(freq,dur){
+  const o=ac.createOscillator();
+  const g=ac.createGain();
+  o.frequency.value=freq;
+  g.gain.value=0.4;
+  o.connect(g); g.connect(ac.destination);
+  o.start(); setTimeout(()=>o.stop(),dur);
+}
+
+function pushUndo(){
+  if(world.undo.length>2) world.undo.shift();
+  world.undo.push(JSON.stringify(world.tiles));
+}
+function undo(){
+  if(world.undo.length) world.tiles=JSON.parse(world.undo.pop());
+}
+
+/* =========================
+   BREATH FORCE
+========================= */
+function applyForce(toward,str){
+  for(const t of world.tiles){
+    const d=Math.hypot(t.x,t.y)+0.001;
+    const fx=(t.x/d)*(toward?-str:str);
+    const fy=(t.y/d)*(toward?-str:str);
+    t.vx+=fx; t.vy+=fy;
+  }
+  playSound(toward?180:360,120);
+}
+
+/* =========================
+   UPDATE
+========================= */
+function update(){
+  if(world.slow>0){ world.slow--; return; }
+
+  for(const t of world.tiles){
+    t.x+=t.vx; t.y+=t.vy;
+    t.vx*=0.92; t.vy*=0.92;
+  }
+
+  const merges=[];
+  for(let i=0;i<world.tiles.length;i++){
+    for(let j=i+1;j<world.tiles.length;j++){
+      const a=world.tiles[i], b=world.tiles[j];
+      if(dist(a.x,a.y,b.x,b.y)<0.5 && canMerge(a.v,b.v))
+        merges.push([i,j]);
+    }
+  }
+
+  const used=new Set();
+  for(const [i,j] of merges){
+    if(used.has(i)||used.has(j)) continue;
+    used.add(i); used.add(j);
+
+    const a=world.tiles[i], b=world.tiles[j];
+    const v=mergeVal(a.v,b.v);
+    world.tiles.push(new Tile((a.x+b.x)/2,(a.y+b.y)/2,v));
+    world.score+=v;
+    playSound(400+v*4,80);
+  }
+
+  world.tiles=world.tiles.filter((_,i)=>!used.has(i));
+  if(Math.random()<0.15) addTile();
+  world.high=Math.max(world.high,world.score);
+  localStorage.setItem("high",world.high);
+}
+
+/* =========================
+   DRAW
+========================= */
+function draw(){
+  ctx.clearRect(0,0,w,h);
+  const s=Math.min(w,h)/world.size*0.8;
+  ctx.save();
+  ctx.translate(w/2,h/2);
+  ctx.scale(s,s);
+
+  for(const t of world.tiles){
+    const hue=t.v<=2?200:(Math.log2(t.v)*35)%360;
+    ctx.fillStyle=`hsl(${hue},80%,60%)`;
+    ctx.beginPath();
+    ctx.arc(t.x,t.y,0.25,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  ctx.fillStyle="#fff";
+  ctx.fillText(`Score ${world.score}  High ${world.high}`,10,20);
+}
+
+/* =========================
+   INPUT
+========================= */
+let lastD=0;
+c.onpointerdown=e=>{
+  lastD=Math.hypot(e.clientX-w/2,e.clientY-h/2);
+  pushUndo();
+};
+c.onpointermove=e=>{
+  if(e.buttons){
+    const d=Math.hypot(e.clientX-w/2,e.clientY-h/2);
+    applyForce(d<lastD,Math.abs(d-lastD)/80);
+    lastD=d;
+  }
+};
+window.onkeydown=e=>{ if(e.key==="u") undo(); };
+
+/* =========================
+   LOOP
+========================= */
+function resize(){
+  w=c.width=innerWidth;
+  h=c.height=innerHeight;
+}
+addTile(); addTile();
+resize(); addEventListener("resize",resize);
+
+(function loop(){
+  update(); draw();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
